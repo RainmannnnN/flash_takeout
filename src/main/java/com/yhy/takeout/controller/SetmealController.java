@@ -140,6 +140,12 @@ public class SetmealController {
         return Result.success("修改成功！");
     }
 
+    /**
+     * 根据id，改变状态
+     * @param info
+     * @param ids
+     * @return
+     */
     @PostMapping("/status/{info}")
     public Result<List<Setmeal>> change(@PathVariable Integer info, @RequestParam List<Long> ids) {
         List<Setmeal> list = new ArrayList<>();
