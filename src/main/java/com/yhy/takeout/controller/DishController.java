@@ -14,10 +14,12 @@ import com.yhy.takeout.service.DishService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @RestController
@@ -33,6 +35,9 @@ public class DishController {
 
     @Autowired
     private CategoryService categoryService;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     /**
      * 添加菜品
@@ -124,6 +129,19 @@ public class DishController {
      */
     @GetMapping("/list")
     public Result<List<DishDto>> list(Dish dish){
+        List<DishDto> listDto = null;
+
+        // 动态构造key
+        String key = "dish_" + dish.getCategoryId() + "_" + dish.getStatus();
+        // 从redis中获取缓存数据
+        listDto = (List<DishDto>) redisTemplate.opsForValue().get(key);
+
+        if (listDto != null) {
+            // 缓存中存在则直接返回
+            return Result.success(listDto);
+        }
+
+        //不存在则继续查询
         // 构造查询条件
         LambdaQueryWrapper<Dish> lambdaQueryWrapper = new LambdaQueryWrapper<>();
         lambdaQueryWrapper.eq(dish.getCategoryId() != null, Dish::getCategoryId, dish.getCategoryId());
@@ -134,7 +152,7 @@ public class DishController {
 
         List<Dish> list = dishService.list(lambdaQueryWrapper);
 
-        List<DishDto> listDto = list.stream().map((item) -> {
+        listDto = list.stream().map((item) -> {
             DishDto dishDto = new DishDto();
             BeanUtils.copyProperties(item, dishDto);
 
@@ -156,6 +174,9 @@ public class DishController {
 
             return dishDto;
         }).collect(Collectors.toList());
+
+        // 把结果缓存到redis里,30s
+        redisTemplate.opsForValue().set(key, listDto, 30, TimeUnit.SECONDS);
 
         return Result.success(listDto);
     }
