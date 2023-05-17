@@ -7,7 +7,6 @@ import com.yhy.takeout.dto.DishDto;
 import com.yhy.takeout.entity.Category;
 import com.yhy.takeout.entity.Dish;
 import com.yhy.takeout.entity.DishFlavor;
-import com.yhy.takeout.entity.Setmeal;
 import com.yhy.takeout.service.CategoryService;
 import com.yhy.takeout.service.DishFlavorService;
 import com.yhy.takeout.service.DishService;
@@ -19,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -48,7 +48,9 @@ public class DishController {
     public Result<String> add(@RequestBody DishDto dishDto){
 
         dishService.addWithFlavor(dishDto);
-
+        // 清理所有菜品的缓存
+        Set keys = redisTemplate.keys("dish_*");
+        redisTemplate.delete(keys);
         return Result.success("添加菜品成功！");
     }
 
@@ -119,6 +121,10 @@ public class DishController {
     @PutMapping
     public Result<String> save(@RequestBody DishDto dishDto){
         dishService.updateWithFlavor(dishDto);
+        // 清理所有菜品的缓存
+        Set keys = redisTemplate.keys("dish_*");
+        redisTemplate.delete(keys);
+
         return Result.success("更改信息成功！");
     }
 
@@ -197,7 +203,6 @@ public class DishController {
                 dishService.updateById(dish);
                 list.add(dish);
             }
-
         }
 
         return Result.success(list);
